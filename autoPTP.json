@@ -1,0 +1,1714 @@
+{
+	"AWSTemplateFormatVersion": "2010-09-09",
+	"Description": "AWS CloudFormation Template for AutoPTP Service Infra",
+	"Parameters": {
+		"EnvironUsed": {
+			"Default": "uat",
+			"Type": "String",
+			"AllowedValues": ["dev", "uat", "rc", "prod", "lab", "proddev", "prodlab"]
+		},
+		"VitalizeId": {
+			"Default": "v428096",
+			"Description": "BMS Vitalize Id for the AUTOPTP project",
+			"Type": "String",
+			"AllowedValues": ["v428096"],
+			"ConstraintDescription": "Must be Vitalize Id of AUTOPTP ONLY"
+		},
+		"ProjectTeam": {
+			"Default": "IS",
+			"Description": "Project team name",
+			"Type": "String"
+		},
+		"OperatorEmail": {
+			"Default": "mg-aws-devops-support@bms.com",
+			"Description": "Email address to notify if there are any operational issues related to application",
+			"Type": "String",
+			"AllowedPattern": "([a-zA-Z0-9_\\-\\.]+)@((\\[[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.)|(([a-zA-Z0-9\\-]+\\.)+))([a-zA-Z]{2,4}|[0-9]{1,3})(\\]?)",
+			"ConstraintDescription": "must be a valid email address."
+		},
+		"UTCTimeStamp": {
+			"Type": "String",
+			"Description": "UTC Timestamp",
+			"Default": "2015-08-17T12:45:03"
+		},
+		"SignedUserToken": {
+			"Type": "String",
+			"Description": "Encrypted user token string."
+		},
+		"JenkinsURL": {
+			"Type": "String",
+			"Description": "URL of the Jenkins job that invoked the stack creation."
+		}
+	},
+	"Conditions": {
+		"CreateCPLTearDownEnv": {
+			"Fn::Or": [{
+				"Fn::Equals": [{
+					"Ref": "EnvironUsed"
+				}, "prod"]
+			}, {
+				"Fn::Equals": [{
+					"Ref": "EnvironUsed"
+				}, "proddev"]
+			}, {
+				"Fn::Equals": [{
+					"Ref": "EnvironUsed"
+				}, "prodlab"]
+			}]
+		},
+		"Governance": {
+			"Fn::Or": [{
+				"Fn::Equals": [{
+					"Ref": "EnvironUsed"
+				}, "prod"]
+			}, {
+				"Fn::Equals": [{
+					"Ref": "EnvironUsed"
+				}, "proddev"]
+			}, {
+				"Fn::Equals": [{
+					"Ref": "EnvironUsed"
+				}, "uat"]
+			}]
+		}
+	},
+	"Mappings": {
+		"Environments": {
+			"-AutoTag": {
+				"Tags": [{
+					"Key": "Project-Team",
+					"Value": "MCS"
+				}, {
+					"Key": "Cost-Center",
+					"Value": "9013945"
+				}, {
+					"Key": "VitalizeId",
+					"Value": "428096"
+				}]
+			},
+			"BMS-Account": {
+				"dev": "BMSIS",
+				"uat": "BMSIS",
+				"proddev": "BMSIS",
+				"rc": "BMSISPROD",
+				"prod": "BMSISPROD",
+				"lab": "BMSLab",
+				"prodlab": "BMSLab"
+			},
+			"Base-Lookup": {
+				"BMSIS": "uat",
+				"BMSISPROD": "prod",
+				"BMSLab": "lab"
+			},
+			"-SvnToS3Copier": {
+				"devItems": [
+					{
+						"SVNLocation": "https://code.bms.com/git/repos/git_internal_aws_customresource/trunk/CustomResources-Provider/AutoPTP/Services/v3.8/",
+						"S3FilePath": "s3://temp-devops/AutoPTP2/Service/v3.8/",
+						"FileName": "*.zip"
+					},
+					{
+						"SVNLocation": "https://code.bms.com/svn/repos/svn_internal_aws_customresource/trunk/CustomResources-Provider/AutoPTP/Services/v3.7/",
+						"S3FilePath": "s3://temp-devops/AutoPTP2/Service/v3.7/",
+						"FileName": "*.zip"
+					},
+					{
+						"SVNLocation": "https://code.bms.com/svn/repos/svn_internal_aws_customresource/trunk/CustomResources-Provider/AutoPTP/Services/v3.6/",
+						"S3FilePath": "s3://temp-devops/AutoPTP2/Service/v3.6/",
+						"FileName": "*.zip"
+					}, {
+						"SVNLocation": "https://code.bms.com/svn/repos/svn_internal_aws_customresource/trunk/CustomResources-Provider/AutoPTP/Config/dev/",
+						"S3FilePath": "s3://autoptpartifacts-dev/Config/",
+						"FileName": "*.json"
+					},{
+						"SVNLocation": "https://code.bms.com/svn/repos/svn_internal_aws_customresource/trunk/CustomResources-Provider/AutoPTP/Config/",
+						"S3FilePath": "s3://temp-devops/AutoPTP2/Config/",
+						"FileName": "*.json"
+					},{
+						"SVNLocation": "https://code.bms.com/svn/repos/svn_internal_aws_customresource/trunk/CustomResources-Provider/AutoPTP/Config/",
+						"S3FilePath": "s3://temp-devops/AutoPTP2/Config/",
+						"FileName": "*.config"
+					}, {
+						"SVNLocation": "https://code.bms.com/svn/repos/svn_internal_aws_customresource/trunk/CustomResources-Provider/Templates/AutoPTP/",
+						"S3FilePath": "s3://temp-devops/AutoPTP2/templates/MA",
+						"FileName": "*.json"
+					}
+				],
+				"proddevItems": [
+					{
+						"SVNLocation": "https://code.bms.com/svn/repos/svn_internal_aws_customresource/trunk/CustomResources-Provider/AutoPTP/Services/v3.8/",
+						"S3FilePath": "s3://temp-devops/AutoPTP2/Service/v3.8/",
+						"FileName": "*.zip"
+					},
+					{
+						"SVNLocation": "https://code.bms.com/svn/repos/svn_internal_aws_customresource/trunk/CustomResources-Provider/AutoPTP/Services/v3.7/",
+						"S3FilePath": "s3://temp-devops/AutoPTP2/Service/v3.7/",
+						"FileName": "*.zip"
+					},
+					{
+						"SVNLocation": "https://code.bms.com/svn/repos/svn_internal_aws_customresource/trunk/CustomResources-Provider/AutoPTP/Services/v3.6/",
+						"S3FilePath": "s3://temp-devops/AutoPTP2/Service/v3.6/",
+						"FileName": "*.zip"
+					}, {
+						"SVNLocation": "https://code.bms.com/svn/repos/svn_internal_aws_customresource/trunk/CustomResources-Provider/AutoPTP/Config/dev/",
+						"S3FilePath": "s3://autoptpartifacts-proddev/Config/",
+						"FileName": "*.json"
+					}, {
+						"SVNLocation": "https://code.bms.com/svn/repos/svn_internal_aws_customresource/trunk/CustomResources-Provider/AutoPTP/Config/",
+						"S3FilePath": "s3://temp-devops/AutoPTP2/Config/",
+						"FileName": "*.config"
+					}, {
+						"SVNLocation": "https://code.bms.com/svn/repos/svn_internal_aws_customresource/trunk/CustomResources-Provider/AutoPTP/Config/",
+						"S3FilePath": "s3://temp-devops/AutoPTP2/Config/",
+						"FileName": "*.json"
+					}, {
+						"SVNLocation": "https://code.bms.com/svn/repos/svn_internal_aws_customresource/trunk/CustomResources-Provider/Templates/AutoPTP/",
+						"S3FilePath": "s3://temp-devops/AutoPTP2/templates/MA",
+						"FileName": "*.json"
+					}
+				],
+				"uatItems": [
+					{
+						"SVNLocation": "https://code.bms.com/svn/repos/svn_internal_aws_customresource/trunk/CustomResources-Provider/AutoPTP/Services/v3.8/",
+						"S3FilePath": "s3://temp-devops/AutoPTP2/Service/v3.8/",
+						"FileName": "*.zip"
+					},
+					{
+						"SVNLocation": "https://code.bms.com/svn/repos/svn_internal_aws_customresource/trunk/CustomResources-Provider/AutoPTP/Services/v3.7/",
+						"S3FilePath": "s3://temp-devops/AutoPTP2/Service/v3.7/",
+						"FileName": "*.zip"
+					},
+					{
+						"SVNLocation": "https://code.bms.com/svn/repos/svn_internal_aws_customresource/trunk/CustomResources-Provider/AutoPTP/Services/v3.6/",
+						"S3FilePath": "s3://temp-devops/AutoPTP2/Service/v3.6/",
+						"FileName": "*.zip"
+					}, {
+						"SVNLocation": "https://code.bms.com/svn/repos/svn_internal_aws_customresource/trunk/CustomResources-Provider/AutoPTP/Config/dev/",
+						"S3FilePath": "s3://autoptpartifacts-uat/Config/",
+						"FileName": "*.json"
+					}, {
+						"SVNLocation": "https://code.bms.com/svn/repos/svn_internal_aws_customresource/trunk/CustomResources-Provider/AutoPTP/Config/",
+						"S3FilePath": "s3://temp-devops/AutoPTP2/Config/",
+						"FileName": "*.json"
+					}, {
+						"SVNLocation": "https://code.bms.com/svn/repos/svn_internal_aws_customresource/trunk/CustomResources-Provider/AutoPTP/Config/",
+						"S3FilePath": "s3://temp-devops/AutoPTP2/Config/",
+						"FileName": "*.config"
+					}, {
+						"SVNLocation": "https://code.bms.com/svn/repos/svn_internal_aws_customresource/trunk/CustomResources-Provider/Templates/AutoPTP/",
+						"S3FilePath": "s3://temp-devops/AutoPTP2/templates/MA",
+						"FileName": "*.json"
+					}
+				],
+				"rcItems": [
+					{
+						"SVNLocation": "https://code.bms.com/svn/repos/svn_internal_aws_customresource/trunk/CustomResources-Provider/AutoPTP/Services/v3.7/",
+						"S3FilePath": "s3://bms-devops/AutoPTP2/Service/v3.7/",
+						"FileName": "*.zip"
+					},
+					{
+						"SVNLocation": "https://code.bms.com/svn/repos/svn_internal_aws_customresource/trunk/CustomResources-Provider/AutoPTP/Services/v3.6/",
+						"S3FilePath": "s3://bms-devops/AutoPTP2/Service/v3.6/",
+						"FileName": "*.zip"
+					}, {
+						"SVNLocation": "https://code.bms.com/svn/repos/svn_internal_aws_customresource/trunk/CustomResources-Provider/AutoPTP/Config/prod/",
+						"S3FilePath": "s3://autoptpartifacts-rc/Config/",
+						"FileName": "*.json"
+					}, {
+						"SVNLocation": "https://code.bms.com/svn/repos/svn_internal_aws_customresource/trunk/CustomResources-Provider/AutoPTP/Config/",
+						"S3FilePath": "s3://bms-devops/AutoPTP2/Config/",
+						"FileName": "*.config"
+					}, {
+						"SVNLocation": "https://code.bms.com/svn/repos/svn_internal_aws_customresource/trunk/CustomResources-Provider/AutoPTP/Config/",
+						"S3FilePath": "s3://bms-devops/AutoPTP2/Config/",
+						"FileName": "*.json"
+					}, {
+						"SVNLocation": "https://code.bms.com/svn/repos/svn_internal_aws_customresource/trunk/CustomResources-Provider/Templates/AutoPTP/",
+						"S3FilePath": "s3://bms-devops/AutoPTP2/templates/MA",
+						"FileName": "*.json"
+					}
+				],
+				"prodItems": [
+					{
+						"SVNLocation": "https://code.bms.com/svn/repos/svn_internal_aws_customresource/trunk/CustomResources-Provider/AutoPTP/Services/v3.8/",
+						"S3FilePath": "s3://bms-devops/AutoPTP2/Service/v3.8/",
+						"FileName": "*.zip"
+					},
+					{
+						"SVNLocation": "https://code.bms.com/svn/repos/svn_internal_aws_customresource/trunk/CustomResources-Provider/AutoPTP/Services/v3.7/",
+						"S3FilePath": "s3://bms-devops/AutoPTP2/Service/v3.7/",
+						"FileName": "*.zip"
+					},
+					{
+						"SVNLocation": "https://code.bms.com/svn/repos/svn_internal_aws_customresource/trunk/CustomResources-Provider/AutoPTP/Services/v3.6/",
+						"S3FilePath": "s3://bms-devops/AutoPTP2/Service/v3.6/",
+						"FileName": "*.zip"
+					}, {
+						"SVNLocation": "https://code.bms.com/svn/repos/svn_internal_aws_customresource/trunk/CustomResources-Provider/AutoPTP/Config/prod/",
+						"S3FilePath": "s3://autoptpartifacts-prod/Config/",
+						"FileName": "*.json"
+					}, {
+						"SVNLocation": "https://code.bms.com/svn/repos/svn_internal_aws_customresource/trunk/CustomResources-Provider/AutoPTP/Config/",
+						"S3FilePath": "s3://bms-devops/AutoPTP2/Config/",
+						"FileName": "*.config"
+					}, {
+						"SVNLocation": "https://code.bms.com/svn/repos/svn_internal_aws_customresource/trunk/CustomResources-Provider/AutoPTP/Config/",
+						"S3FilePath": "s3://bms-devops/AutoPTP2/Config/",
+						"FileName": "*.json"
+					},{
+						"SVNLocation": "https://code.bms.com/svn/repos/svn_internal_aws_customresource/trunk/CustomResources-Provider/Templates/AutoPTP/",
+						"S3FilePath": "s3://bms-devops/AutoPTP2/templates/MA",
+						"FileName": "*.json"
+					}
+				],
+				"labItems": [
+					{
+						"SVNLocation": "https://code.bms.com/svn/repos/svn_internal_aws_customresource/trunk/CustomResources-Provider/AutoPTP/Services/v3.7/",
+						"S3FilePath": "s3://lab-devops/AutoPTP2/Service/v3.7/",
+						"FileName": "*.zip"
+					},
+					{
+						"SVNLocation": "https://code.bms.com/svn/repos/svn_internal_aws_customresource/trunk/CustomResources-Provider/AutoPTP/Services/v3.6/",
+						"S3FilePath": "s3://lab-devops/AutoPTP2/Service/v3.6/",
+						"FileName": "*.zip"
+					}, {
+						"SVNLocation": "https://code.bms.com/svn/repos/svn_internal_aws_customresource/trunk/CustomResources-Provider/AutoPTP/Config/lab/",
+						"S3FilePath": "s3://autoptpartifacts-lab/Config/",
+						"FileName": "*.json"
+					}, {
+						"SVNLocation": "https://code.bms.com/svn/repos/svn_internal_aws_customresource/trunk/CustomResources-Provider/AutoPTP/Config/",
+						"S3FilePath": "s3://lab-devops/AutoPTP2/Config/",
+						"FileName": "*.config"
+					},{
+						"SVNLocation": "https://code.bms.com/svn/repos/svn_internal_aws_customresource/trunk/CustomResources-Provider/AutoPTP/Config/",
+						"S3FilePath": "s3://lab-devops/AutoPTP2/Config/",
+						"FileName": "*.json"
+					},{
+						"SVNLocation": "https://code.bms.com/svn/repos/svn_internal_aws_customresource/trunk/CustomResources-Provider/Templates/AutoPTP/",
+						"S3FilePath": "s3://lab-devops/AutoPTP2/templates/MA",
+						"FileName": "*.json"
+					}
+				],
+				"prodlabItems": [
+					
+					{
+						"SVNLocation": "https://code.bms.com/svn/repos/svn_internal_aws_customresource/trunk/CustomResources-Provider/AutoPTP/Services/v3.8/",
+						"S3FilePath": "s3://lab-devops/AutoPTP2/Service/v3.8/",
+						"FileName": "*.zip"
+					},
+					{
+						"SVNLocation": "https://code.bms.com/svn/repos/svn_internal_aws_customresource/trunk/CustomResources-Provider/AutoPTP/Services/v3.6/",
+						"S3FilePath": "s3://lab-devops/AutoPTP2/Service/v3.6/",
+						"FileName": "*.zip"
+					}, {
+						"SVNLocation": "https://code.bms.com/svn/repos/svn_internal_aws_customresource/trunk/CustomResources-Provider/AutoPTP/Config/lab/",
+						"S3FilePath": "s3://autoptpartifacts-prodlab/Config/",
+						"FileName": "*.json"
+					}, {
+						"SVNLocation": "https://code.bms.com/svn/repos/svn_internal_aws_customresource/trunk/CustomResources-Provider/AutoPTP/Config/",
+						"S3FilePath": "s3://lab-devops/AutoPTP2/Config/",
+						"FileName": "*.config"
+					},
+					{
+						"SVNLocation": "https://code.bms.com/svn/repos/svn_internal_aws_customresource/trunk/CustomResources-Provider/AutoPTP/Config/",
+						"S3FilePath": "s3://lab-devops/AutoPTP2/Config/",
+						"FileName": "*.json"
+					},				{
+						"SVNLocation": "https://code.bms.com/svn/repos/svn_internal_aws_customresource/trunk/CustomResources-Provider/Templates/AutoPTP/",
+						"S3FilePath": "s3://lab-devops/AutoPTP2/templates/MA",
+						"FileName": "*.json"
+					}
+				]
+			},
+			"dev": {
+				"crLookupTopicArn": "arn:aws:sns:us-east-1:820784505615:bms_cr_CRLookup-uat",
+				"SourceBucket": "temp-devops",
+				"s3StackName": "BMS-AutoPTP-S3-Infra-uat",
+				"GetPayloadKey": "AutoPTP2/Service/v3.6/getpayload.zip",
+				"AutoPTPServiceS3Key": "AutoPTP2/Service/v3.8/AutoPTPServicev2.33.zip",
+				"S3CopierKey": "AutoPTP2/Service/v3.8/S3copierv1.0.zip",
+				"SourceUpdatorKey": "AutoPTP2/Service/v3.8/SourceProcessorv1.25.zip",
+				"StackStateValidatorKey": "AutoPTP2/Service/v3.6/StackStateValidatorServicev2.0.zip",
+				"GovernanceRoleArn": "arn:aws:iam::820784505615:role/_ServiceRole/IS/v428096/v428096-AutoPTPGovernanceServiceRole",
+				"CFTearDownKey": "AutoPTP2/Service/v3.6/CFTeardownServicev1.1.zip",
+				"ConfigUpdatorKey": "AutoPTP2/Service/v3.6/configupdatorv1.2.zip",
+				"CFTearDownApproverKey": "AutoPTP2/Service/v3.6/teardownapproverv1.1.zip",
+				"CFValidatorKey": "AutoPTP2/Service/v3.6/validatorapproverv1.1.zip",
+				"JobTearDownKey": "AutoPTP2/Service/v3.6/CPLTearDownServicev1.2.zip",
+				"ReportKey": "AutoPTP2/Service/v3.6/reportGenerationService.zip",
+				"LoggerServiceKey": "AutoPTP2/Service/v3.6/logger.zip",
+				"SCProductTableName": "v465897SC-initprod-ProductTable",
+				"SCProductRoleArn": "arn:aws:iam::650586835449:role/_ServiceRole/BMSCloud/v428096/v428096_AutoPTP_DynamoDBAssumeRole",
+				"AutoPTPServiceRole": "arn:aws:iam::820784505615:role/_ServiceRole/BMSCloud/v428096/v428096-AutoPTP-LambdaServiceRole",
+				"RoleMappingConfigS3Path": "https://autoptpartifacts-uat.s3.amazonaws.com/Config/RoleLDAPMappingConfig.json",
+				"AutoPTPCloudFormationDefaultRole": "arn:aws:iam::820784505615:role/_ServiceRole/BMSCloud/v428096/v428096-AutoPTP-CloudFormationRole",
+				"AutoPTPCodePipelineDefaultRole": "arn:aws:iam::820784505615:role/_ServiceRole/BMSCloud/v428096/v428096-AutoPTPCPL-DefaultRole",
+				"CodePieplinePassRole": "_ServiceRole/BMSCloud/v428096/v428096-AutoPTP-CodePipelinePassRole",
+				"LambdaAssumeRole": "_ServiceRole/BMSCloud/v428096/v428096-AutoPTP-LambdaAssumeRole",
+				"RolesNestedStackUrl": "https://temp-devops.s3.amazonaws.com/AutoPTP2/templates/MA/AutoPTP-TCWS-Role-Infra.json",
+				"APIGatewayNestedStackUrl": "https://temp-devops.s3.amazonaws.com/AutoPTP2/templates/MA/BMS-AutoPTP-APIGateway-Infra.json",
+				"EBNestedStackUrl": "https://temp-devops.s3.amazonaws.com/AutoPTP2/templates/MA/BMS-AutoPTP-EB-Copier-Infra.json"
+			},
+			"uat": {
+				"crLookupTopicArn": "arn:aws:sns:us-east-1:820784505615:bms_cr_CRLookup-uat",
+				"SourceBucket": "temp-devops",
+				"s3StackName": "BMS-AutoPTP-S3-Infra-uat",
+				"GetPayloadKey": "AutoPTP2/Service/v3.6/getpayload.zip",
+				"AutoPTPServiceS3Key": "AutoPTP2/Service/v3.7/AutoPTPServicev2.15.zip",
+				"S3CopierKey": "AutoPTP2/Service/v3.6/s3copierv3.11.zip",
+				"SourceUpdatorKey": "AutoPTP2/Service/v3.8/SourceProcessorv1.23.zip",
+				"StackStateValidatorKey": "AutoPTP2/Service/v3.6/StackStateValidatorServicev1.9.zip",
+				"GovernanceRoleArn": "arn:aws:iam::820784505615:role/_ServiceRole/IS/v428096/v428096-AutoPTPGovernanceServiceRole",
+				"CFTearDownKey": "AutoPTP2/Service/v3.6/CFTeardownServicev1.1.zip",
+				"ConfigUpdatorKey": "AutoPTP2/Service/v3.6/configupdatorv1.0.zip",
+				"CFTearDownApproverKey": "AutoPTP2/Service/v3.6/teardownapproverv1.1.zip",
+				"CFValidatorKey": "AutoPTP2/Service/v3.6/validatorapproverv1.1.zip",
+				"JobTearDownKey": "AutoPTP2/Service/v3.6/CPLTearDownServicev1.2.zip",
+				"ReportKey": "AutoPTP2/Service/v3.6/reportGenerationService.zip",
+				"LoggerServiceKey": "AutoPTP2/Service/v3.6/logger.zip",
+				"SCProductTableName": "v465897SC-initprod-ProductTable",
+				"SCProductRoleArn": "arn:aws:iam::650586835449:role/_ServiceRole/BMSCloud/v428096/v428096_AutoPTP_DynamoDBAssumeRole",
+				"AutoPTPServiceRole": "arn:aws:iam::820784505615:role/_ServiceRole/BMSCloud/v428096/v428096-AutoPTP-LambdaServiceRole",
+				"RoleMappingConfigS3Path": "https://autoptpartifacts-uat.s3.amazonaws.com/Config/RoleLDAPMappingConfig.json",
+				"AutoPTPCloudFormationDefaultRole": "arn:aws:iam::820784505615:role/autoptp-cloudformation-role-dev",
+				"AutoPTPCodePipelineDefaultRole": "arn:aws:iam::820784505615:role/_ServiceRole/BMSCloud/v428096/v428096-AutoPTPCPL-DefaultRole",
+				"CodePieplinePassRole": "_ServiceRole/BMSCloud/v428096/v428096-AutoPTP-CodePipelinePassRole",
+				"LambdaAssumeRole": "_ServiceRole/BMSCloud/v428096/v428096-AutoPTP-LambdaAssumeRole",
+				"RolesNestedStackUrl": "https://temp-devops.s3.amazonaws.com/AutoPTP2/templates/MA/AutoPTP-TCWS-Role-Infra.json",
+				"APIGatewayNestedStackUrl": "https://temp-devops.s3.amazonaws.com/AutoPTP2/templates/MA/BMS-AutoPTP-APIGateway-Infra.json",
+				"EBNestedStackUrl": "https://temp-devops.s3.amazonaws.com/AutoPTP2/templates/MA/BMS-AutoPTP-EB-Copier-Infra.json"
+			},
+			"proddev": {
+				"crLookupTopicArn": "arn:aws:sns:us-east-1:820784505615:bms_cr_CRLookup-uat",
+				"SourceBucket": "temp-devops",
+				"s3StackName": "BMS-AutoPTP-S3-Infra-proddev",
+				"GetPayloadKey": "AutoPTP2/Service/v3.6/getpayload.zip",
+				"AutoPTPServiceS3Key": "AutoPTP2/Service/v3.8/AutoPTPServicev2.38.zip",
+				"S3CopierKey": "AutoPTP2/Service/v3.8/S3-copier.zip",
+				"StackStateValidatorKey": "AutoPTP2/Service/v3.6/StackStateValidatorServicev1.9.zip",
+				"SourceUpdatorKey": "AutoPTP2/Service/v3.8/SourceProcessorv1.28.zip",
+				"CFTearDownKey": "AutoPTP2/Service/v3.6/CFTeardownServicev1.1.zip",
+				"ConfigUpdatorKey": "AutoPTP2/Service/v3.6/configupdatorv1.1.zip",
+				"CFTearDownApproverKey": "AutoPTP2/Service/v3.6/teardownapproverv1.1.zip",
+				"CFValidatorKey": "AutoPTP2/Service/v3.6/validatorapproverv1.1.zip",
+				"JobTearDownKey": "AutoPTP2/Service/v3.6/CPLTearDownServicev1.2.zip",
+				"ReportKey": "AutoPTP2/Service/v3.6/reportGenerationServicev2.0.zip",
+				"LoggerServiceKey": "AutoPTP2/Service/v3.6/logger.zip",
+				"GovernanceRoleArn": "arn:aws:iam::820784505615:role/_ServiceRole/IS/v428096/v428096-AutoPTPGovernanceServiceRole",
+				"SCProductTableName": "v465897SC-initprod-ProductTable",
+				"SCProductRoleArn": "arn:aws:iam::650586835449:role/_ServiceRole/BMSCloud/v428096/v428096_AutoPTP_DynamoDBAssumeRole",
+				"AutoPTPServiceRole": "arn:aws:iam::820784505615:role/_ServiceRole/BMSCloud/v428096/v428096-AutoPTP-LambdaServiceRole",
+				"RoleMappingConfigS3Path": "https://autoptpartifacts-proddev.s3.amazonaws.com/Config/RoleLDAPMappingConfig.json",
+				"AutoPTPCloudFormationDefaultRole": "arn:aws:iam::820784505615:role/autoptp-cloudformation-role-dev",
+				"AutoPTPCodePipelineDefaultRole": "arn:aws:iam::820784505615:role/_ServiceRole/BMSCloud/v428096/v428096-AutoPTPCPL-DefaultRole",
+				"CodePieplinePassRole": "_ServiceRole/BMSCloud/v428096/v428096-AutoPTP-CodePipelinePassRole",
+				"LambdaAssumeRole": "_ServiceRole/BMSCloud/v428096/v428096-AutoPTP-LambdaAssumeRole",
+				"RolesNestedStackUrl": "https://temp-devops.s3.amazonaws.com/AutoPTP2/templates/MA/AutoPTP-TCWS-Role-Infra.json",
+				"APIGatewayNestedStackUrl": "https://temp-devops.s3.amazonaws.com/AutoPTP2/templates/MA/BMS-AutoPTP-APIGateway-Infra.json",
+				"EBNestedStackUrl": "https://temp-devops.s3.amazonaws.com/AutoPTP2/templates/MA/BMS-AutoPTP-EB-Copier-Infra.json"
+			},
+			"rc": {
+				"crLookupTopicArn": "arn:aws:sns:us-east-1:465258079489:bms_cr_CRLookup-rc",
+				"SourceBucket": "bms-devops",
+				"GetPayloadKey": "AutoPTP2/Service/v3.6/getpayload.zip",
+				"AutoPTPServiceS3Key": "AutoPTP2/Service/v3.7/AutoPTPServicev2.15.zip",
+				"S3CopierKey": "AutoPTP2/Service/v3.6/s3copierv3.11.zip",
+				"StackStateValidatorKey": "AutoPTP2/Service/v3.6/StackStateValidatorServicev1.9.zip",
+				"SourceUpdatorKey": "AutoPTP2/Service/v3.7/SourceProcessorv1.11.zip",
+				"CFTearDownKey": "AutoPTP2/Service/v3.6/CFTeardownServicev1.1.zip",
+				"ConfigUpdatorKey": "AutoPTP2/Service/v3.6/configupdatorv1.0.zip",
+				"CFTearDownApproverKey": "AutoPTP2/Service/v3.6/teardownapproverv1.1.zip",
+				"CFValidatorKey": "AutoPTP2/Service/v3.6/validatorapproverv1.1.zip",
+				"JobTearDownKey": "AutoPTP2/Service/v3.6/CPLTearDownServicev1.2.zip",
+				"ReportKey": "AutoPTP2/Service/v3.6/reportGenerationService.zip",
+				"LoggerServiceKey": "AutoPTP2/Service/v3.6/logger.zip",
+				"SCProductTableName": "v465897SC-initprod-ProductTable",
+				"SCProductRoleArn": "arn:aws:iam::650586835449:role/_ServiceRole/BMSCloud/v428096/v428096_AutoPTP_DynamoDBAssumeRole",
+				"AutoPTPServiceRole": "arn:aws:iam::465258079489:role/_ServiceRole/BMSCloud/v428096/v428096-AutoPTP-LambdaServiceRole",
+				"GovernanceRoleArn": "arn:aws:iam::820784505615:role/_ServiceRole/IS/v428096/v428096-AutoPTPGovernanceServiceRole",
+				"RoleMappingConfigS3Path": "https://autoptpartifacts-rc.s3.amazonaws.com/Config/RoleLDAPMappingConfig.json",
+				"AutoPTPCloudFormationDefaultRole": "arn:aws:iam::465258079489:role/autoptp-cloudformation-role-prod",
+				"AutoPTPCodePipelineDefaultRole": "arn:aws:iam::465258079489:role/_ServiceRole/BMSCloud/v428096/v428096-AutoPTPCPL-DefaultRole",
+				"CodePieplinePassRole": "_ServiceRole/BMSCloud/v428096/v428096-AutoPTP-CodePipelinePassRole",
+				"LambdaAssumeRole": "_ServiceRole/BMSCloud/v428096/v428096-AutoPTP-LambdaAssumeRole",
+				"RolesNestedStackUrl": "https://bms-devops.s3.amazonaws.com/AutoPTP2/templates/MA/AutoPTP-TCWS-Role-Infra-rc.json",
+				"APIGatewayNestedStackUrl": "https://bms-devops.s3.amazonaws.com/AutoPTP2/templates/MA/BMS-AutoPTP-APIGateway-Infra-rc.json",
+				"EBNestedStackUrl": "https://bms-devops.s3.amazonaws.com/AutoPTP2/templates/MA/BMS-AutoPTP-EB-Copier-Infra.json"
+			},
+			"prod": {
+				"crLookupTopicArn": "arn:aws:sns:us-east-1:465258079489:bms_cr_CRLookup-prod",
+				"SourceBucket": "bms-devops",
+				"GetPayloadKey": "AutoPTP2/Service/v3.6/getpayload.zip",
+				"AutoPTPServiceS3Key": "AutoPTP2/Service/v3.8/AutoPTPServicev2.38.zip",
+				"S3CopierKey":"AutoPTP2/Service/v3.7/S3CopierService.zip",
+				"StackStateValidatorKey": "AutoPTP2/Service/v3.6/StackStateValidatorServicev1.9.zip",
+				"SourceUpdatorKey": "AutoPTP2/Service/v3.8/SourceProcessorv1.28.zip",
+				"CFTearDownKey": "AutoPTP2/Service/v3.6/CFTeardownServicev1.1.zip",
+				"ConfigUpdatorKey": "AutoPTP2/Service/v3.6/configupdatorv1.1.zip",
+				"CFTearDownApproverKey": "AutoPTP2/Service/v3.6/teardownapproverv1.1.zip",
+				"CFValidatorKey": "AutoPTP2/Service/v3.6/validatorapproverv1.1.zip",
+				"JobTearDownKey": "AutoPTP2/Service/v3.6/CPLTearDownServicev1.2.zip",
+				"ReportKey": "AutoPTP2/Service/v3.6/reportGenerationService-prodv2.0.zip",
+				"LoggerServiceKey": "AutoPTP2/Service/v3.6/logger.zip",
+				"SCProductTableName": "v465897SC-initprod-ProductTable",
+				"SCProductRoleArn": "arn:aws:iam::650586835449:role/_ServiceRole/BMSCloud/v428096/v428096_AutoPTP_DynamoDBAssumeRole",
+				"AutoPTPServiceRole": "arn:aws:iam::465258079489:role/_ServiceRole/BMSCloud/v428096/v428096-AutoPTP-LambdaServiceRole",
+				"GovernanceRoleArn": "arn:aws:iam::820784505615:role/_ServiceRole/IS/v428096/v428096-AutoPTPGovernanceServiceRole",
+				"RoleMappingConfigS3Path": "https://autoptpartifacts-prod.s3.amazonaws.com/Config/RoleLDAPMappingConfig.json",
+				"AutoPTPCloudFormationDefaultRole": "arn:aws:iam::465258079489:role/autoptp-cloudformation-role-prod",
+				"AutoPTPCodePipelineDefaultRole": "arn:aws:iam::465258079489:role/_ServiceRole/BMSCloud/v428096/v428096-AutoPTPCPL-DefaultRole",
+				"CodePieplinePassRole": "_ServiceRole/BMSCloud/v428096/v428096-AutoPTP-CodePipelinePassRole",
+				"LambdaAssumeRole": "_ServiceRole/BMSCloud/v428096/v428096-AutoPTP-LambdaAssumeRole",
+				"RolesNestedStackUrl": "https://bms-devops.s3.amazonaws.com/AutoPTP2/templates/MA/AutoPTP-TCWS-Role-Infra.json",
+				"APIGatewayNestedStackUrl": "https://bms-devops.s3.amazonaws.com/AutoPTP2/templates/MA/BMS-AutoPTP-APIGateway-Infra.json",
+				"EBNestedStackUrl": "https://bms-devops.s3.amazonaws.com/AutoPTP2/templates/MA/BMS-AutoPTP-EB-Copier-Infra.json"
+			},
+			"lab": {
+				"crLookupTopicArn": "arn:aws:sns:us-east-1:315327487940:bms_cr_CRLookup-lab",
+				"SourceBucket": "lab-devops",
+				"s3StackName": "BMS-AutoPTP-S3-Infra-lab",
+				"GetPayloadKey": "AutoPTP2/Service/v3.6/getpayload.zip",
+				"AutoPTPServiceS3Key": "AutoPTP2/Service/v3.7/AutoPTPServicev2.15.zip",
+				"SourceUpdatorKey": "AutoPTP2/Service/v3.7/SourceProcessorv1.15.zip",
+				"S3CopierKey": "AutoPTP2/Service/v3.6/s3copierv3.11.zip",
+				"StackStateValidatorKey": "AutoPTP2/Service/v3.6/StackStateValidatorServicev1.9.zip",
+				"CFTearDownKey": "AutoPTP2/Service/v3.6/CFTeardownServicev1.1.zip",
+				"ConfigUpdatorKey": "AutoPTP2/Service/v3.6/configupdatorv1.0.zip",
+				"CFTearDownApproverKey": "AutoPTP2/Service/v3.6/teardownapproverv1.1.zip",
+				"CFValidatorKey": "AutoPTP2/Service/v3.6/validatorapproverv1.1.zip",
+				"JobTearDownKey": "AutoPTP2/Service/v3.6/CPLTearDownServicev1.2.zip",
+				"ReportKey": "AutoPTP2/Service/v3.6/reportGenerationService.zip",
+				"LoggerServiceKey": "AutoPTP2/Service/v3.6/logger.zip",
+				"SCProductTableName": "v465897SC-initprod-ProductTable",
+				"SCProductRoleArn": "arn:aws:iam::650586835449:role/_ServiceRole/BMSCloud/v428096/v428096_AutoPTP_DynamoDBAssumeRole",
+				"AutoPTPServiceRole": "arn:aws:iam::315327487940:role/_ServiceRole/BMSCloud/v428096/v428096-AutoPTP-LambdaServiceRole",
+				"RoleMappingConfigS3Path": "https://autoptpartifacts-lab.s3.amazonaws.com/Config/RoleLDAPMappingConfig.json",
+				"AutoPTPCloudFormationDefaultRole": "arn:aws:iam::315327487940:role/autoptp-cloudformation-role-dev",
+				"AutoPTPCodePipelineDefaultRole": "arn:aws:iam::315327487940:role/_ServiceRole/BMSCloud/v428096/v428096-AutoPTPCPL-DefaultRole",
+				"CodePieplinePassRole": "_ServiceRole/BMSCloud/v428096/v428096-AutoPTP-CodePipelinePassRole",
+				"LambdaAssumeRole": "_ServiceRole/BMSCloud/v428096/v428096-AutoPTP-LambdaAssumeRole",
+				"RolesNestedStackUrl": "https://lab-devops.s3.amazonaws.com/AutoPTP2/templates/MA/AutoPTP-TCWS-Role-Infra.json",
+				"APIGatewayNestedStackUrl": "https://lab-devops.s3.amazonaws.com/AutoPTP2/templates/MA/BMS-AutoPTP-APIGateway-Infra.json",
+				"EBNestedStackUrl": "https://lab-devops.s3.amazonaws.com/AutoPTP2/templates/MA/BMS-AutoPTP-EB-Copier-Infra.json"
+			},
+			"prodlab": {
+				"crLookupTopicArn": "arn:aws:sns:us-east-1:315327487940:bms_cr_CRLookup-lab",
+				"SourceBucket": "lab-devops",
+				"s3StackName": "BMS-AutoPTP-S3-Infra-prodlab",
+				"GetPayloadKey": "AutoPTP2/Service/v3.6/getpayload.zip",
+				"AutoPTPServiceS3Key": "AutoPTP2/Service/v3.7/AutoPTPServicev2.15.zip",
+				"SourceUpdatorKey": "AutoPTP2/Service/v3.7/SourceProcessorv1.15.zip",
+				"S3CopierKey": "AutoPTP2/Service/v3.6/s3copierv3.14.zip",
+				"StackStateValidatorKey": "AutoPTP2/Service/v3.6/StackStateValidatorServicev1.9.zip",
+				"CFTearDownKey": "AutoPTP2/Service/v3.6/CFTeardownServicev1.1.zip",
+				"ConfigUpdatorKey": "AutoPTP2/Service/v3.6/configupdatorv1.0.zip",
+				"CFTearDownApproverKey": "AutoPTP2/Service/v3.6/teardownapproverv1.1.zip",
+				"CFValidatorKey": "AutoPTP2/Service/v3.6/validatorapproverv1.1.zip",
+				"JobTearDownKey": "AutoPTP2/Service/v3.6/CPLTearDownServicev1.2.zip",
+				"ReportKey": "AutoPTP2/Service/v3.6/reportGenerationService.zip",
+				"LoggerServiceKey": "AutoPTP2/Service/v3.6/logger.zip",
+				"SCProductTableName": "v465897SC-initprod-ProductTable",
+				"SCProductRoleArn": "arn:aws:iam::650586835449:role/_ServiceRole/BMSCloud/v428096/v428096_AutoPTP_DynamoDBAssumeRole",
+				"AutoPTPServiceRole": "arn:aws:iam::315327487940:role/_ServiceRole/BMSCloud/v428096/v428096-AutoPTP-LambdaServiceRole",
+				"RoleMappingConfigS3Path": "https://autoptpartifacts-prodlab.s3.amazonaws.com/Config/RoleLDAPMappingConfig.json",
+				"AutoPTPCloudFormationDefaultRole": "arn:aws:iam::315327487940:role/autoptp-cloudformation-role-dev",
+				"AutoPTPCodePipelineDefaultRole": "arn:aws:iam::315327487940:role/_ServiceRole/BMSCloud/v428096/v428096-AutoPTPCPL-DefaultRole",
+				"CodePieplinePassRole": "_ServiceRole/BMSCloud/v428096/v428096-AutoPTP-CodePipelinePassRole",
+				"LambdaAssumeRole": "_ServiceRole/BMSCloud/v428096/v428096-AutoPTP-LambdaAssumeRole",
+				"RolesNestedStackUrl": "https://lab-devops.s3.amazonaws.com/AutoPTP2/templates/MA/AutoPTP-TCWS-Role-Infra.json",
+				"APIGatewayNestedStackUrl": "https://lab-devops.s3.amazonaws.com/AutoPTP2/templates/MA/BMS-AutoPTP-APIGateway-Infra.json",
+				"EBNestedStackUrl": "https://lab-devops.s3.amazonaws.com/AutoPTP2/templates/MA/BMS-AutoPTP-EB-Copier-Infra.json"
+			}
+		}
+	},
+	"Resources": {
+		"masterCRLookup": {
+			"Type": "Custom::crLookup",
+			"Properties": {
+				"ServiceToken": {
+					"Fn::FindInMap": ["Environments", {
+						"Fn::FindInMap": ["Environments", "Base-Lookup", {
+							"Fn::FindInMap": ["Environments", "BMS-Account", {
+								"Ref": "EnvironUsed"
+							}]
+						}]
+					}, "crLookupTopicArn"]
+				},
+				"CFStackName": {
+					"Fn::Join": ["-", ["BMS-CR-Providers-Parent", {
+						"Fn::FindInMap": ["Environments", "Base-Lookup", {
+							"Fn::FindInMap": ["Environments", "BMS-Account", {
+								"Ref": "EnvironUsed"
+							}]
+						}]
+					}]]
+				}
+			}
+		},
+		"VPCLookup": {
+			"Type": "Custom::crLookup",
+			"Properties": {
+				"ServiceToken": {
+					"Fn::FindInMap": ["Environments", {
+						"Fn::FindInMap": ["Environments", "Base-Lookup", {
+							"Fn::FindInMap": ["Environments", "BMS-Account", {
+								"Ref": "EnvironUsed"
+							}]
+						}]
+					}, "crLookupTopicArn"]
+				},
+				"CFStackName": {
+					"Fn::Join": ["-", ["Master-VPCLookup", {
+						"Fn::FindInMap": ["Environments", "Base-Lookup", {
+							"Fn::FindInMap": ["Environments", "BMS-Account", {
+								"Ref": "EnvironUsed"
+							}]
+						}]
+					}]]
+				}
+			}
+		},
+		"S3InfraLookup": {
+			"Type": "Custom::crLookup",
+			"Properties": {
+				"ServiceToken": {
+					"Fn::FindInMap": ["Environments", {
+						"Fn::FindInMap": ["Environments", "Base-Lookup", {
+							"Fn::FindInMap": ["Environments", "BMS-Account", {
+								"Ref": "EnvironUsed"
+							}]
+						}]
+					}, "crLookupTopicArn"]
+				},
+				"CFStackName": {"Fn::Join": ["-", ["BMS-AutoPTP-S3-Infra", {"Ref": "EnvironUsed"}]]
+				},
+				"Version":"1.0"
+			}
+			
+		},
+		"EBAlarmSNSTopic": {
+			"Type": "AWS::SNS::Topic",
+			"Properties": {
+				"TopicName": {
+					"Fn::Join": ["", [{
+						"Ref": "VitalizeId"
+					}, "AutoPTPEBSAlarm-", {
+						"Ref": "EnvironUsed"
+					}]]
+				},
+				"Subscription": [{
+					"Endpoint": {
+						"Ref": "OperatorEmail"
+					},
+					"Protocol": "email"
+				}]
+			}
+		},
+		"AutoPTPConfigUpdatorApprovalSNSTopic": {
+			"Type": "AWS::SNS::Topic",
+			"Properties": {
+				"Subscription": [{
+					"Endpoint": {
+						"Fn::GetAtt": ["AutoPTPConfigUpdatorLambda", "Arn"]
+					},
+					"Protocol": "lambda"
+				}],
+				"TopicName": {
+					"Fn::Join": ["", [{
+						"Ref": "VitalizeId"
+					}, "AutoPTPConfigUpdatorApprovalSNSTopic-", {
+						"Ref": "EnvironUsed"
+					}]]
+				}
+			}
+		},
+		"SNSLambdaInvokePermission": {
+			"Type": "AWS::Lambda::Permission",
+			"Properties": {
+				"Action": "lambda:InvokeFunction",
+				"FunctionName": {
+					"Fn::GetAtt": ["AutoPTPConfigUpdatorLambda", "Arn"]
+				},
+				"Principal": "sns.amazonaws.com",
+				"SourceArn": {
+					"Ref": "AutoPTPConfigUpdatorApprovalSNSTopic"
+				}
+			}
+		},
+		"AutoPTPCreateServiceLambda": {
+			"Type": "AWS::Lambda::Function",
+			"Properties": {
+				"Handler": "app.handler",
+				"Role": {
+					"Fn::FindInMap": ["Environments", {
+						"Ref": "EnvironUsed"
+					}, "AutoPTPServiceRole"]
+				},
+				"Code": {
+					"S3Bucket": {
+						"Fn::FindInMap": ["Environments", {
+							"Ref": "EnvironUsed"
+						}, "SourceBucket"]
+					},
+					"S3Key": {
+						"Fn::FindInMap": ["Environments", {
+							"Ref": "EnvironUsed"
+						}, "AutoPTPServiceS3Key"]
+					}
+				},
+				"FunctionName": {
+					"Fn::Join": ["-", [{
+						"Ref": "VitalizeId"
+					}, "AutoPTP-CreateSVC", {
+						"Ref": "EnvironUsed"
+					}]]
+				},
+				"Description": "Service to create code pipeline",
+				"Runtime": "nodejs12.x",
+				"MemorySize": 500,
+				"Timeout": 400,
+				"VpcConfig": {
+					"SecurityGroupIds": [{
+						"Fn::GetAtt": ["VPCLookup", "WebSecurityGroup"]
+					}],
+					"SubnetIds": [{
+						"Fn::GetAtt": ["VPCLookup", "WebSubnet3"]
+					}]
+				},
+				"Environment": {
+					"Variables": {
+						"AutoPTPCloudFormationDefaultRole": {
+							"Fn::FindInMap": ["Environments", {
+								"Ref": "EnvironUsed"
+							}, "AutoPTPCloudFormationDefaultRole"]
+						},
+						"RoleMappingConfigS3Path": {
+							"Fn::FindInMap": ["Environments", {
+								"Ref": "EnvironUsed"
+							}, "RoleMappingConfigS3Path"]
+						},
+						"AutoPTPCPLRole": {
+							"Fn::FindInMap": ["Environments", {
+								"Ref": "EnvironUsed"
+							}, "AutoPTPCodePipelineDefaultRole"]
+						},
+						"Account": {
+							"Ref": "AWS::AccountId"
+						},
+						"SCProductTableName": {
+							"Fn::FindInMap": ["Environments", {
+								"Ref": "EnvironUsed"
+							}, "SCProductTableName"]
+						},
+						"SCProductRoleArn": {
+							"Fn::FindInMap": ["Environments", {
+								"Ref": "EnvironUsed"
+							}, "SCProductRoleArn"]
+						},
+						"CodePieplinePassRole": {
+							"Fn::FindInMap": ["Environments", {
+								"Ref": "EnvironUsed"
+							}, "CodePieplinePassRole"]
+						},
+						"LambdaAssumeRole": {
+							"Fn::FindInMap": ["Environments", {
+								"Ref": "EnvironUsed"
+							}, "LambdaAssumeRole"]
+						},
+						"Region": {
+							"Ref": "AWS::Region"
+						},
+						"RCRelaxBucket":"autoptpartifacts-prod",
+						"DevelopmentAccount":"820784505615",
+						"IsServiceNowCheckEnabled":true,
+						"NewSVNUrl":"https://bmsnprod.service-now.com/api/now/table",
+						"OldSVNUrl":"https://bmsprod.service-now.com/api/now/table",
+						"SQSUrl": "https://sqs.us-east-1.amazonaws.com/465258079489/v428096-Centralised-Service-SQS-prod"
+					}
+				}
+			}
+		},
+		"StackStateValidatorLambda": {
+			"Type": "AWS::Lambda::Function",
+			"Properties": {
+				"Handler": "app.handler",
+				"Role": {
+					"Fn::FindInMap": ["Environments", {
+						"Ref": "EnvironUsed"
+					}, "AutoPTPServiceRole"]
+				},
+				"Code": {
+					"S3Bucket": {
+						"Fn::FindInMap": ["Environments", {
+							"Ref": "EnvironUsed"
+						}, "SourceBucket"]
+					},
+					"S3Key": {
+						"Fn::FindInMap": ["Environments", {
+							"Ref": "EnvironUsed"
+						}, "StackStateValidatorKey"]
+					}
+				},
+				"FunctionName": {
+					"Fn::Join": ["-", [{
+						"Ref": "VitalizeId"
+					}, "AutoPTP-StackStateValidator", {
+						"Ref": "EnvironUsed"
+					}]]
+				},
+				"Runtime": "nodejs10.x",
+				"Description": "Service to validate stack state",
+				"MemorySize": 512,
+				"Environment": {
+					"Variables": {
+						"Bucket": {"Fn::GetAtt": ["S3InfraLookup","AutoPTPArtifactsBucket"]},
+						"Account": {
+							"Ref": "AWS::AccountId"
+						},
+						"InfraEnv": {
+							"Ref": "EnvironUsed"
+						},
+						"configupdatorlambda": {
+							"Ref": "AutoPTPConfigUpdatorLambda"
+						},
+						"reportgenerationlambda": {
+							"Fn::If": ["Governance", {
+								"Ref": "AutoPTPReportGenerationService"
+							}, "NULL"]
+						},
+						"LambdaAssumeRole": {
+							"Fn::FindInMap": ["Environments", {
+								"Ref": "EnvironUsed"
+							}, "LambdaAssumeRole"]
+						},
+						"Region": {
+							"Ref": "AWS::Region"
+						},
+						"SQSUrl": "https://sqs.us-east-1.amazonaws.com/465258079489/v428096-Centralised-Service-SQS-prod"
+					}
+				},
+				"Timeout": 300,
+				"VpcConfig": {
+					"SecurityGroupIds": [{
+						"Fn::GetAtt": ["VPCLookup", "WebSecurityGroup"]
+					}],
+					"SubnetIds": [{
+						"Fn::GetAtt": ["VPCLookup", "WebSubnet3"]
+					},
+					{
+						"Fn::GetAtt": ["VPCLookup", "WebSubnet4"]
+					}]
+				}
+			}
+		},
+		"AutoPTPCFTearDownLambda": {
+			"Type": "AWS::Lambda::Function",
+			"Properties": {
+				"Handler": "app.handler",
+				"Role": {
+					"Fn::FindInMap": ["Environments", {
+						"Ref": "EnvironUsed"
+					}, "AutoPTPServiceRole"]
+				},
+				"Code": {
+					"S3Bucket": {
+						"Fn::FindInMap": ["Environments", {
+							"Ref": "EnvironUsed"
+						}, "SourceBucket"]
+					},
+					"S3Key": {
+						"Fn::FindInMap": ["Environments", {
+							"Ref": "EnvironUsed"
+						}, "CFTearDownKey"]
+					}
+				},
+				"FunctionName": {
+					"Fn::Join": ["-", [{
+						"Ref": "VitalizeId"
+					}, "AutoPTP-StackTearDownSVC", {
+						"Ref": "EnvironUsed"
+					}]]
+				},
+				"Runtime": "nodejs10.x",
+				"Environment": {
+					"Variables": {
+						"LambdaAssumeRole": {
+							"Fn::FindInMap": ["Environments", {
+								"Ref": "EnvironUsed"
+							}, "LambdaAssumeRole"]
+						},
+						"Region": {
+							"Ref": "AWS::Region"
+						},
+						"SQSUrl": "https://sqs.us-east-1.amazonaws.com/465258079489/v428096-Centralised-Service-SQS-prod"
+					}
+				},
+				"Description": "Service to tear down stack svc.Service only works in RC",
+				"MemorySize": 512,
+				"Timeout": 300,
+				"VpcConfig": {
+					"SecurityGroupIds": [{
+						"Fn::GetAtt": ["VPCLookup", "WebSecurityGroup"]
+					}],
+					"SubnetIds": [{
+						"Fn::GetAtt": ["VPCLookup", "WebSubnet3"]
+					},
+					{
+						"Fn::GetAtt": ["VPCLookup", "WebSubnet4"]
+					}]
+				}
+			}
+		},
+		"AutoPTPConfigUpdatorLambda": {
+			"Type": "AWS::Lambda::Function",
+			"Properties": {
+				"Handler": "app.handler",
+				"Role": {
+					"Fn::FindInMap": ["Environments", {
+						"Ref": "EnvironUsed"
+					}, "AutoPTPServiceRole"]
+				},
+				"Code": {
+					"S3Bucket": {
+						"Fn::FindInMap": ["Environments", {
+							"Ref": "EnvironUsed"
+						}, "SourceBucket"]
+					},
+					"S3Key": {
+						"Fn::FindInMap": ["Environments", {
+							"Ref": "EnvironUsed"
+						}, "ConfigUpdatorKey"]
+					}
+				},
+				"FunctionName": {
+					"Fn::Join": ["-", [{
+						"Ref": "VitalizeId"
+					}, "AutoPTP-ConfigUpdator", {
+						"Ref": "EnvironUsed"
+					}]]
+				},
+				"Runtime": "nodejs10.x",
+				"Environment": {
+					"Variables": {
+						"LambdaAssumeRole": {
+							"Fn::FindInMap": ["Environments", {
+								"Ref": "EnvironUsed"
+							}, "LambdaAssumeRole"]
+						},
+						"Region": {
+							"Ref": "AWS::Region"
+						},
+						"TableName":"v428096-BMS-AutoPTP-CFStackDeletion-Table-initprod",
+						"SQSUrl": "https://sqs.us-east-1.amazonaws.com/465258079489/v428096-Centralised-Service-SQS-prod"
+					}
+				},
+				"Description": "Servie which updates cofig file to perform stack teardown.Service only works in RC.",
+				"MemorySize": 512,
+				"Timeout": 300,
+				"VpcConfig": {
+					"SecurityGroupIds": [{
+						"Fn::GetAtt": ["VPCLookup", "WebSecurityGroup"]
+					}],
+					"SubnetIds": [{
+						"Fn::GetAtt": ["VPCLookup", "WebSubnet3"]
+					},
+					{
+						"Fn::GetAtt": ["VPCLookup", "WebSubnet4"]
+					}]
+				}
+			}
+		},
+		"AutoPTPValidatorApprover": {
+			"Type": "AWS::Lambda::Function",
+			"Properties": {
+				"Handler": "app.handler",
+				"Role": {
+					"Fn::FindInMap": ["Environments", {
+						"Ref": "EnvironUsed"
+					}, "AutoPTPServiceRole"]
+				},
+				"Code": {
+					"S3Bucket": {
+						"Fn::FindInMap": ["Environments", {
+							"Ref": "EnvironUsed"
+						}, "SourceBucket"]
+					},
+					"S3Key": {
+						"Fn::FindInMap": ["Environments", {
+							"Ref": "EnvironUsed"
+						}, "CFValidatorKey"]
+					}
+				},
+				"FunctionName": {
+					"Fn::Join": ["-", [{
+						"Ref": "VitalizeId"
+					}, "AutoPTP-ValidatorApprover", {
+						"Ref": "EnvironUsed"
+					}]]
+				},
+				"Runtime": "nodejs10.x",
+				"Environment": {
+					"Variables": {
+						"Bucket": {"Fn::GetAtt": ["S3InfraLookup","AutoPTPArtifactsBucket"]},
+						"Account": {
+							"Ref": "AWS::AccountId"
+						},
+						"InfraEnv": {
+							"Ref": "EnvironUsed"
+						},
+						"stackteardownlambda": {
+							"Ref": "AutoPTPCFTearDownLambda"
+						},
+						"stackvalidatorlambda": {
+							"Ref": "StackStateValidatorLambda"
+						},
+						"Region": {
+							"Ref": "AWS::Region"
+						},
+						"SQSUrl": "https://sqs.us-east-1.amazonaws.com/465258079489/v428096-Centralised-Service-SQS-prod"
+					}
+				},
+				"Description": "Servie which lists s3 bucket and invoke stack state validator service to validate stack state.",
+				"MemorySize": 512,
+				"Timeout": 300,
+				"VpcConfig": {
+					"SecurityGroupIds": [{
+						"Fn::GetAtt": ["VPCLookup", "WebSecurityGroup"]
+					}],
+					"SubnetIds": [{
+						"Fn::GetAtt": ["VPCLookup", "WebSubnet3"]
+					},
+					{
+						"Fn::GetAtt": ["VPCLookup", "WebSubnet4"]
+					}]
+				}
+			}
+		},
+		"AutoPTPTearDownApprover": {
+			"Type": "AWS::Lambda::Function",
+			"Properties": {
+				"Handler": "app.handler",
+				"Role": {
+					"Fn::FindInMap": ["Environments", {
+						"Ref": "EnvironUsed"
+					}, "AutoPTPServiceRole"]
+				},
+				"Code": {
+					"S3Bucket": {
+						"Fn::FindInMap": ["Environments", {
+							"Ref": "EnvironUsed"
+						}, "SourceBucket"]
+					},
+					"S3Key": {
+						"Fn::FindInMap": ["Environments", {
+							"Ref": "EnvironUsed"
+						}, "CFTearDownApproverKey"]
+					}
+				},
+				"FunctionName": {
+					"Fn::Join": ["-", [{
+						"Ref": "VitalizeId"
+					}, "AutoPTP-TearDownApprover", {
+						"Ref": "EnvironUsed"
+					}]]
+				},
+				"Runtime": "nodejs10.x",
+				"Environment": {
+					"Variables": {
+						"Bucket": {"Fn::GetAtt": ["S3InfraLookup","AutoPTPArtifactsBucket"]},
+						"Account": {
+							"Ref": "AWS::AccountId"
+						},
+						"InfraEnv": {
+							"Ref": "EnvironUsed"
+						},
+						"stackteardownlambda": {
+							"Ref": "AutoPTPCFTearDownLambda"
+						},
+						"Region": {
+							"Ref": "AWS::Region"
+						},
+						"SQSUrl": "https://sqs.us-east-1.amazonaws.com/465258079489/v428096-Centralised-Service-SQS-prod"
+					}
+				},
+				"Description": "Servie which list s3 and invokes stack tear down service to delete stack.",
+				"MemorySize": 512,
+				"Timeout": 300,
+				"VpcConfig": {
+					"SecurityGroupIds": [{
+						"Fn::GetAtt": ["VPCLookup", "WebSecurityGroup"]
+					}],
+					"SubnetIds": [{
+						"Fn::GetAtt": ["VPCLookup", "WebSubnet3"]
+					},
+					{
+						"Fn::GetAtt": ["VPCLookup", "WebSubnet4"]
+					}]
+				}
+			}
+		},
+		"AutoPTPSourceUpdator": {
+			"Type": "AWS::Lambda::Function",
+			"Properties": {
+				"Handler": "app.handler",
+				"Role": {
+					"Fn::FindInMap": ["Environments", {
+						"Ref": "EnvironUsed"
+					}, "AutoPTPServiceRole"]
+				},
+				"Code": {
+					"S3Bucket": {
+						"Fn::FindInMap": ["Environments", {
+							"Ref": "EnvironUsed"
+						}, "SourceBucket"]
+					},
+					"S3Key": {
+						"Fn::FindInMap": ["Environments", {
+							"Ref": "EnvironUsed"
+						}, "SourceUpdatorKey"]
+					}
+				},
+				"FunctionName": {
+					"Fn::Join": ["-", [{
+						"Ref": "VitalizeId"
+					}, "AutoPTP-SourceUpdator", {
+						"Ref": "EnvironUsed"
+					}]]
+				},
+				"Runtime": "nodejs10.x",
+				"Environment": {
+					"Variables": {
+						"LambdaAssumeRole": {
+							"Fn::FindInMap": ["Environments", {
+								"Ref": "EnvironUsed"
+							}, "LambdaAssumeRole"]
+						},
+						"Region": {
+							"Ref": "AWS::Region"
+						},
+						"SQSUrl": "https://sqs.us-east-1.amazonaws.com/465258079489/v428096-Centralised-Service-SQS-prod"
+					}
+				},
+				"Description": "Servie which updates artifacts.",
+				"MemorySize": 512,
+				"Timeout": 500,
+				"VpcConfig": {
+					"SecurityGroupIds": [{
+						"Fn::GetAtt": ["VPCLookup", "WebSecurityGroup"]
+					}],
+					"SubnetIds": [{
+						"Fn::GetAtt": ["VPCLookup", "WebSubnet3"]
+					},
+					{
+						"Fn::GetAtt": ["VPCLookup", "WebSubnet4"]
+					}]
+				}
+			}
+		},
+		"AutoPTPTearDownService": {
+			"Type": "AWS::Lambda::Function",
+			"Condition": "CreateCPLTearDownEnv",
+			"Properties": {
+				"Handler": "app.handler",
+				"Role": {
+					"Fn::FindInMap": ["Environments", {
+						"Ref": "EnvironUsed"
+					}, "AutoPTPServiceRole"]
+				},
+				"Code": {
+					"S3Bucket": {
+						"Fn::FindInMap": ["Environments", {
+							"Ref": "EnvironUsed"
+						}, "SourceBucket"]
+					},
+					"S3Key": {
+						"Fn::FindInMap": ["Environments", {
+							"Ref": "EnvironUsed"
+						}, "JobTearDownKey"]
+					}
+				},
+				"Environment": {
+					"Variables": {
+						"Bucket": {"Fn::GetAtt": ["S3InfraLookup","AutoPTPArtifactsBucket"]},
+						"Account": {
+							"Ref": "AWS::AccountId"
+						},
+						"InfraEnv": {
+							"Ref": "EnvironUsed"
+						},
+						"to": {
+							"Ref": "OperatorEmail"
+						},
+						"Region": {
+							"Ref": "AWS::Region"
+						},
+						"LambdaAssumeRole": {
+							"Fn::FindInMap": ["Environments", {
+								"Ref": "EnvironUsed"
+							}, "LambdaAssumeRole"]
+						},
+						"SQSUrl": "https://sqs.us-east-1.amazonaws.com/465258079489/v428096-Centralised-Service-SQS-prod"
+					}
+				},
+				"FunctionName": {
+					"Fn::Join": ["-", [{
+						"Ref": "VitalizeId"
+					}, "AutoPTP-CPLTearDownSVC", {
+						"Ref": "EnvironUsed"
+					}]]
+				},
+				"Runtime": "nodejs10.x",
+				"Description": "Servie configured with CW Event to delete code pipeline in every 29 days.Service only works in proddev, prodlab and prod",
+				"MemorySize": 512,
+				"Timeout": 300,
+				"VpcConfig": {
+					"SecurityGroupIds": [{
+						"Fn::GetAtt": ["VPCLookup", "WebSecurityGroup"]
+					}],
+					"SubnetIds": [{
+						"Fn::GetAtt": ["VPCLookup", "WebSubnet3"]
+					},
+					{
+						"Fn::GetAtt": ["VPCLookup", "WebSubnet4"]
+					}]
+				}
+			}
+		},
+		"AutoPTPReportGenerationService": {
+			"Type": "AWS::Lambda::Function",
+			"Condition": "Governance",
+			"Properties": {
+				"Handler": "app.handler",
+				"Role": {
+					"Fn::FindInMap": ["Environments", {
+						"Ref": "EnvironUsed"
+					}, "AutoPTPServiceRole"]
+				},
+				"Code": {
+					"S3Bucket": {
+						"Fn::FindInMap": ["Environments", {
+							"Ref": "EnvironUsed"
+						}, "SourceBucket"]
+					},
+					"S3Key": {
+						"Fn::FindInMap": ["Environments", {
+							"Ref": "EnvironUsed"
+						}, "ReportKey"]
+					}
+				},
+				"Environment": {
+					"Variables": {
+						"bucket": {"Fn::GetAtt": ["S3InfraLookup","AutoPTPArtifactsBucket"]},
+						"Account": {
+							"Ref": "AWS::AccountId"
+						},
+						"InfraEnv": {
+							"Ref": "EnvironUsed"
+						},
+						"governancerole": {
+							"Fn::FindInMap": ["Environments", {
+								"Ref": "EnvironUsed"
+							}, "GovernanceRoleArn"]
+						},
+						"to": {
+							"Ref": "OperatorEmail"
+						},
+						"governancetable": {
+							"Fn::Join": ["", ["v428096-AutoPTP-Governance-", {
+								"Ref": "EnvironUsed"
+							}]]
+						},
+						"Region": {
+							"Ref": "AWS::Region"
+						},
+						"SQSUrl": "https://sqs.us-east-1.amazonaws.com/465258079489/v428096-Centralised-Service-SQS-prod"
+					}
+				},
+				"FunctionName": {
+					"Fn::Join": ["-", [{
+						"Ref": "VitalizeId"
+					}, "AutoPTPReportGenerationService", {
+						"Ref": "EnvironUsed"
+					}]]
+				},
+				"Runtime": "nodejs10.x",
+				"Description": "Servie configured with CW Event to delete code pipeline in every 29 days.Service only works in proddev, prodlab and prod",
+				"MemorySize": 512,
+				"Timeout": 300,
+				"VpcConfig": {
+					"SecurityGroupIds": [{
+						"Fn::GetAtt": ["VPCLookup", "WebSecurityGroup"]
+					}],
+					"SubnetIds": [{
+						"Fn::GetAtt": ["VPCLookup", "WebSubnet3"]
+					},
+					{
+						"Fn::GetAtt": ["VPCLookup", "WebSubnet4"]
+					}]
+				}
+			}
+		},
+		"AutoPTPLoggerService": {
+			"Type": "AWS::Lambda::Function",
+			"Properties": {
+				"Handler": "app.handler",
+				"Role": {
+					"Fn::FindInMap": ["Environments", {
+						"Ref": "EnvironUsed"
+					}, "AutoPTPServiceRole"]
+				},
+				"Code": {
+					"S3Bucket": {
+						"Fn::FindInMap": ["Environments", {
+							"Ref": "EnvironUsed"
+						}, "SourceBucket"]
+					},
+					"S3Key": {
+						"Fn::FindInMap": ["Environments", {
+							"Ref": "EnvironUsed"
+						}, "LoggerServiceKey"]
+					}
+				},
+				"FunctionName": {
+					"Fn::Join": ["-", [{
+						"Ref": "VitalizeId"
+					}, "AutoPTP-Logger-Service", {
+						"Ref": "EnvironUsed"
+					}]]
+				},
+				"Runtime": "nodejs10.x",
+				"Environment": {
+					"Variables": {
+						"Region": {
+							"Ref": "AWS::Region"
+						},
+						"SQSUrl": "https://sqs.us-east-1.amazonaws.com/465258079489/v428096-Centralised-Service-SQS-prod"
+					}
+				},
+				"MemorySize": 512,
+				"Timeout": 300,
+				"VpcConfig": {
+					"SecurityGroupIds": [{
+						"Fn::GetAtt": ["VPCLookup", "WebSecurityGroup"]
+					}],
+					"SubnetIds": [{
+						"Fn::GetAtt": ["VPCLookup", "WebSubnet3"]
+					},
+					{
+						"Fn::GetAtt": ["VPCLookup", "WebSubnet4"]
+					}]
+				}
+			}
+		},
+		"AutoPTPGetPayloadLambda": {
+			"Type": "AWS::Lambda::Function",
+			"Properties": {
+				"Handler": "app.handler",
+				"Role": {
+					"Fn::FindInMap": ["Environments", {
+						"Ref": "EnvironUsed"
+					}, "AutoPTPServiceRole"]
+				},
+				"Code": {
+					"S3Bucket": {
+						"Fn::FindInMap": ["Environments", {
+							"Ref": "EnvironUsed"
+						}, "SourceBucket"]
+					},
+					"S3Key": {
+						"Fn::FindInMap": ["Environments", {
+							"Ref": "EnvironUsed"
+						}, "GetPayloadKey"]
+					}
+				},
+				"FunctionName": {
+					"Fn::Join": ["-", [{
+						"Ref": "VitalizeId"
+					}, "AutoPTP-GetPayload", {
+						"Ref": "EnvironUsed"
+					}]]
+				},
+				"Description": "Service to get payload from svn",
+				"Runtime": "nodejs10.x",
+				"Environment": {
+					"Variables": {
+						"Region": {
+							"Ref": "AWS::Region"
+						},
+						"SQSUrl": "https://sqs.us-east-1.amazonaws.com/465258079489/v428096-Centralised-Service-SQS-prod"
+					}
+				},
+				"MemorySize": 512,
+				"Timeout": 300,
+				"VpcConfig": {
+					"SecurityGroupIds": [{
+						"Fn::GetAtt": ["VPCLookup", "WebSecurityGroup"]
+					}],
+					"SubnetIds": [{
+						"Fn::GetAtt": ["VPCLookup", "WebSubnet3"]
+					},
+					{
+						"Fn::GetAtt": ["VPCLookup", "WebSubnet4"]
+					}]
+				}
+			}
+		},
+		"EBNestedStack": {
+			"Type": "AWS::CloudFormation::Stack",
+			"Properties": {
+				"Parameters": {
+					"EnvironUsed": {
+						"Ref": "EnvironUsed"
+					},
+					"OperatorEmail": {
+						"Ref": "OperatorEmail"
+					},
+					"EBAlarmSNSTopic": {
+						"Ref": "EBAlarmSNSTopic"
+					}
+				},
+				"TemplateURL": {
+					"Fn::FindInMap": ["Environments", {
+						"Ref": "EnvironUsed"
+					}, "EBNestedStackUrl"]
+				}
+			}
+		},
+		"APILambdaInvokeRole": {
+			"Type": "Custom::iamSurrogator",
+			"Properties": {
+				"ServiceToken": {
+					"Fn::GetAtt": ["masterCRLookup", "IAMSurrogatorTopicArn"]
+				},
+				"isVitalizeIdAppended": "true",
+				"ParentStackID": {
+					"Ref": "AWS::StackId"
+				},
+				"RoleNamePrefix": {
+					"Fn::Join": ["", ["autoptp-gwlambda-invoke-role-", {
+						"Ref": "EnvironUsed"
+					}]]
+				},
+				"PathSuffix": "/BMS-AutoPTP2/",
+				"ConsumerMailId": {
+					"Ref": "OperatorEmail"
+				},
+				"TrustedEntities": ["apigateway.amazonaws.com"],
+				"Policy": {
+					"PolicyName": {
+						"Fn::Join": ["-", [{
+							"Ref": "VitalizeId"
+						}, "autoptp-gwlambda-invoke-policy", {
+							"Ref": "EnvironUsed"
+						}]]
+					},
+					"PolicyDescription": "Auto PTP API Gateway Lambda invoke policy using IAM Surrogator",
+					"PolicyDocument": {
+						"Version": "2012-10-17",
+						"Statement": [{
+							"Sid": "LambdaInvokeRole",
+							"Effect": "Allow",
+							"Action": ["lambda:InvokeFunction"],
+							"Resource": [{
+								"Fn::GetAtt": ["AutoPTPCreateServiceLambda", "Arn"]
+							}, {
+								"Fn::If": ["CreateCPLTearDownEnv", {
+									"Fn::GetAtt": ["AutoPTPTearDownService", "Arn"]
+								}, {
+									"Ref": "AWS::NoValue"
+								}]
+							}]
+						}]
+					}
+				}
+			}
+		},
+		"APIGatewayNestedStack": {
+			"Type": "AWS::CloudFormation::Stack",
+			"Properties": {
+				"Parameters": {
+					"EnvironUsed": {
+						"Ref": "EnvironUsed"
+					},
+					"AutoPTPServiceLambdaArn": {
+						"Fn::GetAtt": ["AutoPTPCreateServiceLambda", "Arn"]
+					},
+					"AutoPTPGetPayloadServiceArn": {
+						"Fn::GetAtt": ["AutoPTPGetPayloadLambda", "Arn"]
+					},
+					"AutoPTPTearDownServiceArn": {
+						"Fn::If": ["CreateCPLTearDownEnv", {
+							"Fn::GetAtt": ["AutoPTPTearDownService", "Arn"]
+						}, "NULL"]
+					},
+					"AutoPTPServiceInvokeRole": {
+						"Fn::GetAtt": ["APILambdaInvokeRole", "IAMRoleArn"]
+					},
+					"StackName": {
+						"Ref": "AWS::StackName"
+					},
+					"OperatorEmail": {
+						"Ref": "OperatorEmail"
+					}
+				},
+				"TemplateURL": {
+					"Fn::FindInMap": ["Environments", {
+						"Ref": "EnvironUsed"
+					}, "APIGatewayNestedStackUrl"]
+				}
+			}
+		},
+		"autoPTPIAMSurrogatorTCWSRole": {
+			"Type": "Custom::iamSurrogator",
+			"Properties": {
+				"ServiceToken": {
+					"Fn::GetAtt": ["masterCRLookup", "IAMSurrogatorTopicArn"]
+				},
+				"ParentStackID": {
+					"Ref": "AWS::StackId"
+				},
+				"RoleNamePrefix": {
+					"Fn::Join": ["", ["autoptp-invocation-role-", {
+						"Ref": "EnvironUsed"
+					}]]
+				},
+				"PathSuffix": "/BMS-AutoPTP2/",
+				"ConsumerMailId": {
+					"Ref": "OperatorEmail"
+				},
+				"isVitalizeIdAppended": "true",
+				"TCWSRoleConfiguration": {
+					"IsTCWSEnabledRole": true,
+					"TCWSRoleDisplayName": {
+						"Fn::Join": ["", ["autoptp-invocation-role1-", {
+							"Ref": "EnvironUsed"
+						}]]
+					},
+					"Description": "Auto PTP Service Invocation Role"
+				},
+				"Policy": {
+					"PolicyName": {
+						"Fn::Join": ["-", [{
+							"Ref": "VitalizeId"
+						}, "autoptp-invocation-policy", {
+							"Ref": "EnvironUsed"
+						}]]
+					},
+					"PolicyDescription": "Auto PTP Service Invocation Policy Using IAM surrogator CR",
+					"PolicyDocument": {
+						"Version": "2012-10-17",
+						"Statement": [{
+							"Sid": "APIGatewayInvoke",
+							"Effect": "Allow",
+							"Action": ["execute-api:Invoke"],
+							"Resource": [{
+								"Fn::GetAtt": ["APIGatewayNestedStack", "Outputs.AutoPTPCreateURL"]
+							}, {
+								"Fn::GetAtt": ["APIGatewayNestedStack", "Outputs.AutoPTPDeleteURL"]
+							}]
+						}]
+					}
+				}
+			}
+		},
+		"RolesNestedStack": {
+			"Type": "AWS::CloudFormation::Stack",
+			"Properties": {
+				"Parameters": {
+					"EnvironUsed": {
+						"Ref": "EnvironUsed"
+					},
+					"MasterStackID": {
+						"Ref": "AWS::StackId"
+					},
+					"MasterStackName": {
+						"Ref": "AWS::StackName"
+					},
+					"OperatorEmail": {
+						"Ref": "OperatorEmail"
+					},
+					"AutoPTPConfigUpdatorApprovalSNSTopic": {
+						"Ref": "AutoPTPConfigUpdatorApprovalSNSTopic"
+					},
+					"EBAlarmSNSTopic": {
+						"Ref": "EBAlarmSNSTopic"
+					},
+					"AutoPTPCreateServiceLambda": {
+						"Fn::GetAtt": ["AutoPTPCreateServiceLambda", "Arn"]
+					},
+					"AutoPTPTearDownService": {
+						"Fn::If": ["CreateCPLTearDownEnv", {
+							"Fn::GetAtt": ["AutoPTPTearDownService", "Arn"]
+						}, "NULL"]
+					},
+					"StackStateValidatorLambda": {
+						"Fn::GetAtt": ["StackStateValidatorLambda", "Arn"]
+					},
+					"AutoPTPCFTearDownLambda": {
+						"Fn::GetAtt": ["AutoPTPCFTearDownLambda", "Arn"]
+					},
+					"AutoPTPConfigUpdatorLambda": {
+						"Fn::GetAtt": ["AutoPTPConfigUpdatorLambda", "Arn"]
+					},
+					"AutoPTPTearDownApprover": {
+						"Fn::GetAtt": ["AutoPTPTearDownApprover", "Arn"]
+					},
+					"AutoPTPValidatorApprover": {
+						"Fn::GetAtt": ["AutoPTPValidatorApprover", "Arn"]
+					},
+					"AutoPTPS3CopierApprovalSNSTopic": {
+						"Fn::GetAtt": ["EBNestedStack", "Outputs.AutoPTPS3CopierApprovalSNSTopic"]
+					},
+					"LogGroupARN": {
+						"Fn::GetAtt": ["EBNestedStack", "Outputs.LogGroupARN"]
+					},
+					"AutoPTPApplication": {
+						"Fn::GetAtt": ["EBNestedStack", "Outputs.AutoPTPApplication"]
+					},
+					"AutoPTPTearDownServiceName": {
+						"Fn::If": ["CreateCPLTearDownEnv", {
+							"Ref": "AutoPTPTearDownService"
+						}, "NULL"]
+					},
+					"AutoPTPValidatorApproverName": {
+						"Ref": "AutoPTPValidatorApprover"
+					},
+					"AutoPTPTearDownApproverName": {
+						"Ref": "AutoPTPTearDownApprover"
+					},
+					"AutoPTPReportGenerationServiceArn": {
+						"Fn::If": ["Governance", {
+							"Fn::GetAtt": ["AutoPTPReportGenerationService", "Arn"]
+						}, "NULL"]
+					},
+					"AutoPTPReportGenerationServiceName": {
+						"Fn::If": ["Governance", {
+							"Ref": "AutoPTPReportGenerationService"
+						}, "NULL"]
+					},
+					"AutoPTPSourceUpdator":{
+						"Fn::GetAtt": ["AutoPTPSourceUpdator", "Arn"]
+					}
+				},
+				"TemplateURL": {
+					"Fn::FindInMap": ["Environments", {
+						"Ref": "EnvironUsed"
+					}, "RolesNestedStackUrl"]
+				}
+			}
+		},
+		"AutoPTPGovernanceTable": {
+			"Type": "AWS::DynamoDB::Table",
+			"Condition": "Governance",
+			"Properties": {
+				"AttributeDefinitions": [{
+					"AttributeName": "s3Uri",
+					"AttributeType": "S"
+				}],
+				"TableName": {
+					"Fn::Join": ["-", [{
+						"Ref": "VitalizeId"
+					}, "AutoPTP-Governance", {
+						"Ref": "EnvironUsed"
+					}]]
+				},
+				"KeySchema": [{
+					"AttributeName": "s3Uri",
+					"KeyType": "HASH"
+				}],
+				"ProvisionedThroughput": {
+					"ReadCapacityUnits": 5,
+					"WriteCapacityUnits": 5
+				}
+			}
+		}
+	},
+	"Outputs": {
+		"AutoPTPURL": {
+			"Description": "Auto PTP API Gateway URL.",
+			"Value": {
+				"Fn::GetAtt": ["APIGatewayNestedStack", "Outputs.AutoPTPURL"]
+			}
+		},
+		"AutoPTPCodePipelineBucket": {
+			"Description": "AUto PTP Code Pipeline artifacts storage.",
+			"Value": {"Fn::GetAtt": ["S3InfraLookup","AutoPTPCodePipelineBucket"]}
+		},
+		"AutoPTPS3CopierNotificationTopicName": {
+			"Description": "Auto PTP SNS Notification Topic for s3 copier manual approval.",
+			"Value": {
+				"Fn::GetAtt": ["EBNestedStack", "Outputs.AutoPTPS3CopierApprovalSNSTopicName"]
+			}
+		},
+		"AutoPTPS3CopierNotificationTopic": {
+			"Description": "Auto PTP SNS Notification Topic for s3 copier manual approval.",
+			"Value": {
+				"Fn::GetAtt": ["EBNestedStack", "Outputs.AutoPTPS3CopierApprovalSNSTopic"]
+			}
+		},
+		"AutoPTPS3CopierNotificationTopicUATName": {
+			"Description": "Auto PTP SNS Notification Topic for s3 copier manual approval for uat.",
+			"Value": "v428096S3CopierApproval-uat-new"
+		},
+		"AutoPTPS3CopierNotificationTopicUAT": {
+			"Description": "Auto PTP SNS Notification Topic for s3 copier manual approval for uat.",
+			"Value": "arn:aws:sns:us-east-1:820784505615:v428096S3CopierApproval-uat-new"
+		},
+		"AutoPTPConfigUpdatorApprovalSNSTopic": {
+			"Description": "Auto PTP SNS Notification Topic for auto ptp config updator approval.",
+			"Value":{"Ref":"AutoPTPConfigUpdatorApprovalSNSTopic"}
+		},
+		"AutoPTPConfigUpdatorApprovalSNSTopicName": {
+			"Description": "Auto PTP SNS Notification Topic for auto ptp config updator approval.",
+			"Value":{ "Fn::GetAtt" : [ "AutoPTPConfigUpdatorApprovalSNSTopic", "TopicName" ] }
+		},
+		"AutoPTPStackStateValidator": {
+			"Description": "Auto PTP Stack State Validator.",
+			"Value": {
+				"Ref": "StackStateValidatorLambda"
+			}
+		},
+		"AutoPTPConfigUpdatorLambda": {
+			"Description": "Auto PTP CF Teardown Config Updator.",
+			"Value": {
+				"Ref": "AutoPTPConfigUpdatorLambda"
+			}
+		},
+		"AutoPTPSourceUpdatorLambda": {
+			"Description": "Auto PTP Source Updator Lambda.",
+			"Value": {
+				"Ref": "AutoPTPSourceUpdator"
+			}
+		},
+		"AutoPTPgetPayloadLambda": {
+			"Description": "Auto PTP Get Payload Lambda.",
+			"Value": {
+				"Ref": "AutoPTPGetPayloadLambda"
+			}
+		},
+		"AutoPTPCFTearDown": {
+			"Description": "Auto PTP CF Tear down.",
+			"Value": {
+				"Ref": "AutoPTPCFTearDownLambda"
+			}
+		},
+		"AutoPTPArtifactsBucket": {
+			"Description": "Auto PTP Artifacts Bucket Name.",
+			"Value": {"Fn::GetAtt": ["S3InfraLookup","AutoPTPArtifactsBucket"]}
+		},
+		"CFDeployExceptionConfigS3Path": {
+			"Description": "Auto PTP CF Deploy Exception List Config S3 Path.",
+			"Value": "Config/AutoPTPCFDeployExceptionConfig.json"
+		},
+		"CFDeployServiceConfigS3Path": {
+			"Description": "Auto PTP CF Deploy Service Config S3 Path.",
+			"Value": "Config/AutoPTPCFDeployServiceConfig.json"
+		},
+		"JenkinsURL": {
+			"Description": "URL of the Jenkins job that invoked the stack creation",
+			"Value": {
+				"Ref": "JenkinsURL"
+			}
+		}
+	}
+}
